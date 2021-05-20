@@ -1,0 +1,12 @@
+server:
+  port: 5000
+
+# Database
+db:
+  type: 'postgres'
+  port: 5432
+  database: 'auth-boilerplate'
+
+# Jwt Token
+jwt:
+  expiresIn: 3600
