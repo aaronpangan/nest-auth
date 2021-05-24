@@ -13,11 +13,12 @@ import {
 } from '@nestjs/common';
 import { User } from '../models/entity/user.entity';
 import { AuthService } from './auth.service';
-import { AuthCredentialsDto } from './../helper/dto/login-credentials.dto';
+import { RegisterDto, LoginDto } from '../helper/dto/auth.dto';
 import { Request, Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { GetUser } from './../helper/decorator/extract-user.decorator';
 import { ChangePasswordDto } from '../helper/dto/change-password.dto';
+import SendEmail from './../utils/sendgrid';
 
 @Controller('auth')
 export class AuthController {
@@ -26,26 +27,22 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('/register')
-  signUp(
-    @Body(ValidationPipe) authCredentialDto: AuthCredentialsDto,
-  ): Promise<User> {
+  signUp(@Body(ValidationPipe) authCredentialDto: RegisterDto): Promise<User> {
     return this.authService.signUp(authCredentialDto);
   }
 
   @Post('/login')
   async login(
-    @Body() authCredentialsDto: AuthCredentialsDto,
+    @Body() loginDto: LoginDto,
     @Res({ passthrough: true }) response: Response,
-  ): Promise<{ accessToken: string; email: string }> {
-    const { accessToken, email } = await this.authService.login(
-      authCredentialsDto,
-    );
+  ): Promise<{ accessToken: string; username: string }> {
+    const { accessToken, username } = await this.authService.login(loginDto);
 
     response.cookie('user_token', accessToken, {
       httpOnly: process.env.NODE_ENV === 'development' ? false : true,
     });
 
-    return { accessToken, email };
+    return { accessToken, username };
   }
 
   @Get('/logout')
@@ -78,6 +75,11 @@ export class AuthController {
   test(@GetUser() user: User) {
     console.log(user);
 
-    return user.email;
+    return user.username;
+  }
+
+  @Post('/send')
+  sendEmail() {
+      SendEmail('d');
   }
 }

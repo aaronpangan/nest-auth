@@ -1,6 +1,5 @@
 import { EntityRepository, Repository } from 'typeorm';
 import { User } from '../entity/user.entity';
-import { AuthCredentialsDto } from '../../helper/dto/login-credentials.dto';
 import * as bcrypt from 'bcrypt';
 import {
   ConflictException,
@@ -10,39 +9,48 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ChangePasswordDto } from '../../helper/dto/change-password.dto';
+import { RegisterDto, LoginDto } from './../../helper/dto/auth.dto';
 
 @EntityRepository(User)
 export class UserRepository extends Repository<User> {
   private logger = new Logger('TaskRepository');
 
-  async signUp(authCredentialDto: AuthCredentialsDto): Promise<User> {
-    const { email, password } = authCredentialDto;
+  async signUp(registerDto: RegisterDto): Promise<User> {
+    const { email, password, username } = registerDto;
 
     const newUser = new User();
     newUser.email = email;
+    newUser.username = username;
     newUser.salt = await bcrypt.genSalt();
     newUser.password = await this.passwordEncrypt(password, newUser.salt);
 
     try {
       await newUser.save();
+      this.logger.verbose(
+        `Successfully Registerd Email: ${newUser.email} and Username: ${newUser.username}`,
+      );
     } catch (error) {
-      // 23505 error if duplicate
-      if (error.code === '23505')
-        throw new ConflictException('Email already exists');
-      else {
+      if (error.code === '23505') {
+        this.logger.error(
+          'Duplicate Values for Email or Username Upon Registering',
+        );
+        throw new ConflictException('Email or Username Already Exist');
+      } else {
+        this.logger.error('Database Error');
         throw new InternalServerErrorException();
       }
     }
     return newUser;
   }
 
-  async loginAuthentication(
-    authCredentialsDto: AuthCredentialsDto,
-  ): Promise<string> {
-    const { email, password } = authCredentialsDto;
-    const user = await this.findOne({ email });
+  async loginAuthentication(loginDto: LoginDto): Promise<string> {
+    const { username, password } = loginDto;
+    const user = await this.findOne({ username });
     if (user && (await user.validatePassword(password))) {
-      return user.email;
+      if (!user.isVerified)
+        throw new UnauthorizedException(`Activate Your Account First`);
+
+      return user.username;
     } else throw new UnauthorizedException(`Credentials Error`);
   }
 

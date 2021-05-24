@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import * as cookieParser from 'cookie-parser';
 import * as config from 'config';
+
 async function start() {
   const port = config.get('server').port || process.env.PORT;
   const logger = new Logger('start');
@@ -16,7 +17,6 @@ async function start() {
 
   await app.use(cookieParser());
   await app.listen(port);
-
   logger.log(`Application listening on port ${port}`);
 }
 start();

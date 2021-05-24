@@ -2,10 +2,11 @@ import { Injectable, Logger, NotAcceptableException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserRepository } from './../models/db-repository/user.repository';
-import { AuthCredentialsDto } from './../helper/dto/login-credentials.dto';
+import { RegisterDto, LoginDto } from '../helper/dto/auth.dto';
 import { JwtPayload } from './../helper/interface/jwt-payload.interface';
 import { User } from '../models/entity/user.entity';
 import { ChangePasswordDto } from '../helper/dto/change-password.dto';
+import SendEmail from './../utils/sendgrid';
 
 @Injectable()
 export class AuthService {
@@ -17,23 +18,27 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  signUp(authCredentialsDto: AuthCredentialsDto): Promise<User> {
-    const user = this.userRepo.signUp(authCredentialsDto);
+  async signUp(registerDto: RegisterDto): Promise<User> {
+    const user = await this.userRepo.signUp(registerDto);
+
+    console.log(user);
+
+    SendEmail(user.username);
 
     return user;
   }
 
   async login(
-    authCredentialsDto: AuthCredentialsDto,
-  ): Promise<{ accessToken: string; email: string }> {
-    const email = await this.userRepo.loginAuthentication(authCredentialsDto);
-    const payload: JwtPayload = { email };
+    loginDto: LoginDto,
+  ): Promise<{ accessToken: string; username: string }> {
+    const username = await this.userRepo.loginAuthentication(loginDto);
+    const payload: JwtPayload = { username };
     const accessToken = await this.jwtService.sign(payload);
     this.logger.debug(
       `Generated JWT token with payload ${JSON.stringify(payload)}`,
     );
 
-    return { accessToken, email };
+    return { accessToken, username };
   }
 
   async change_password(
